@@ -331,9 +331,32 @@ static int mouse_currentCursorType(lua_State *L) {
     return 1;
 }
 
+// Reference: https://stackoverflow.com/a/3939241
+static int mouse_setCursorHiddenUntilMoves(lua_State* L) {
+    LuaSkin *skin = LS_API(LS_TBOOLEAN | LS_TOPTIONAL, LS_TBREAK);
+
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        void CGSSetConnectionProperty(int, int, CFStringRef, CFBooleanRef);
+        int _CGSDefaultConnection(void);
+        CFStringRef propertyString;
+
+        // Hack to make background cursor setting work
+        propertyString = CFStringCreateWithCString(NULL, "SetsCursorInBackground", kCFStringEncodingUTF8);
+        CGSSetConnectionProperty(_CGSDefaultConnection(), _CGSDefaultConnection(), propertyString, kCFBooleanTrue);
+        CFRelease(propertyString);
+    });
+
+    [NSCursor setHiddenUntilMouseMoves:lua_isnoneornil(L, 1) ?: lua_toboolean(L, 1)];
+
+    lua_pushvalue(L, 1);
+    return 1;
+}
+
 //Note to future authors, there is no function to use kIOHIDTrackpadAccelerationType because it doesn't appear to do anything on modern systems.
 
 static const luaL_Reg mouseLib[] = {
+    {"setCursorHidden", mouse_setCursorHiddenUntilMoves},
     {"absolutePosition", mouse_absolutePosition},
     {"trackingSpeed", mouse_mouseAcceleration},
     {"scrollDirection", mouse_scrollDirection},
